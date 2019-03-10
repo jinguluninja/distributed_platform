@@ -1,0 +1,7 @@
+log.txt
+best_saved_model.tar.gz
+curr_saved_model.tar.gz
+train_progress.csv
+	cycle,inst1_trained?,...,instn_trained?,nval1,...,nvaln,val_loss1,...,val_lossn,val_acc1,...,val_accn,best_val_loss
+test_progress.csv
+	ntest1,...,ntestn,test_loss1,...,test_lossn,test_acc1,...,test_accn
