@@ -273,9 +273,6 @@ class DistrSystem(object):
 		else:
 			self.initialize_model(session, self.args.load)
 			while (True):
-				if not os.path.exists('test_progress.csv'):
-					time.sleep(self.args.sleep_time)
-					continue
 				if self.args.inst_id == 1:
 					with open('test_progress.csv', 'w') as f:
 						f.write(','*(3*self.args.num_inst-1) + '\n')
@@ -284,7 +281,10 @@ class DistrSystem(object):
 					subprocess.run('git push', shell=True)
 					break
 				else:
-					subprocess.run('git pull', shell=True)
+					subprocess.run('git pull', shell=True)						
+					if not os.path.exists('test_progress.csv'):
+						time.sleep(self.args.sleep_time)
+						continue
 					progress_line = [line.strip().split(',') for line in open('test_progress.csv')][0]
 					if progress_line[self.args.inst_id-2] != '' and progress_line[self.args.inst_id-1] == '':
 						break
