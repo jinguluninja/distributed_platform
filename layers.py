@@ -213,7 +213,7 @@ def dense_w_bias(layer, hidden_size, name="dense_w_bias"):
     layer += b
     return layer
 
-def dense_bn_do_relu(layer, is_training, hidden_size, keep_prob, alpha=0.0, name="dense_bn_do_relu"):
+def dense_bn_do_relu(layer, is_training, hidden_size, dropout, alpha=0.0, name="dense_bn_do_relu"):
     """
     Dense (Fully Connected) layer.
     Architecture: reshape - Affine - batch_norm - dropout - relu
@@ -222,7 +222,7 @@ def dense_bn_do_relu(layer, is_training, hidden_size, keep_prob, alpha=0.0, name
     - layer: (tensor.2d or more) basically, of size [batch_size, etc...]
     - is_training: (bool) are we in training size
     - hidden_size: (int) Number of hidden neurons.
-    - keep_prob: (float) Probability to keep neuron during dropout layer.
+    - dropout: (float) Probability to keep drop during dropout layer.
     - alpha: (float) Slope for leaky ReLU.  Set 0.0 for ReLU.
     - name: (string) unique name for layer.
     """
@@ -230,7 +230,7 @@ def dense_bn_do_relu(layer, is_training, hidden_size, keep_prob, alpha=0.0, name
     # Batch Normalization
     layer = batch_norm(layer, is_training, name=name)
     # Dropout
-    layer = tf.nn.dropout(layer, keep_prob)
+    layer = tf.nn.dropout(layer, rate=dropout)
     # ReLU
     if alpha != 1:
         layer = tf.maximum(layer, layer*alpha)
