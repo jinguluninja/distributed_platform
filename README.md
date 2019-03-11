@@ -40,7 +40,8 @@ INSTRUCTIONS TO RUN
   arguments simultaneously
 - can look at training progress at other institutions in log files
 - combined validation and testing results will be published in the log file of the last 
-  institution
+  institution (***IMPORTANT THAT EACH INSTITUTION HAS A DIFFERENT NAME FOR THEIR LOG
+  FILE***)
 - can access current saved models as well as best saved models (lowest val loss) in 
   file_repo (best model will be saved into [saved_model_name]_best.tar.gz where 
   [save_model_name] is an argument passed to classification.py, can untar this file 
