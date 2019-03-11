@@ -60,7 +60,6 @@ def main(_):
     labels = {line.strip().split(',')[0]: int(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
 
     with tf.Session() as sess:
-        print(args.train, args.val, args.test)
         classifier = DistrSystem(args, labels)
         if args.train:
             subprocess.run('rm train_progress.csv', shell=True)
