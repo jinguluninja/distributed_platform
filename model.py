@@ -30,7 +30,10 @@ class DistrSystem(object):
 		self.ssh_client = ssh_client
 
 		self.images = tf.placeholder(tf.float32, shape=[None, args.img_height, args.img_width, args.img_channels])
-		self.labels = tf.placeholder(tf.int32, shape=[None])
+		if self.args.num_classes > 1:
+			self.labels = tf.placeholder(tf.int32, shape=[None])
+		else:
+			self.labels = tf.placeholder(tf.float32, shape=[None])
 		self.loss_weights = tf.placeholder(tf.float32, shape=[None])
 		self.is_training = tf.placeholder(tf.uint8)
 		self.dropout = tf.placeholder(tf.float32)
@@ -111,7 +114,10 @@ class DistrSystem(object):
 		self.predictions = Res_Net(self.images, self.is_training, self.args.num_classes, self.args.batch_size, self.dropout) 
 
 	def setup_loss(self):
-		self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions, weights=self.loss_weights)      
+		if self.args.num_classes > 1:
+			self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions, weights=self.loss_weights)
+		else:
+			self.loss = tf.losses.mean_squared_error(self.labels, self.predictions, weights=self.loss_weights)     
 
 	def accuracy(self, logits, truth):
 		predictions = np.argmax(logits, axis=1)

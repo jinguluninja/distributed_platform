@@ -76,7 +76,11 @@ def main(_):
 			print('Wrong password')
 	get_central_files(ssh_client, args.central_path)
 
-	labels = {line.strip().split(',')[0]: int(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
+	labels = None
+	if args.num_classes > 1:
+		labels = {line.strip().split(',')[0]: int(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
+	else:
+		labels = {line.strip().split(',')[0]: float(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
 
 	with tf.Session() as sess:
 		classifier = DistrSystem(args, labels, ssh_client)

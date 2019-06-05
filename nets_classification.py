@@ -35,6 +35,8 @@ def linear_model(layer, is_training, height, width, channels, class_num, batch_s
     W = tf.get_variable('W', shape=[height*width*channels, class_num], initializer=tf.contrib.layers.xavier_initializer())
     b = tf.get_variable('b', shape=[class_num])
     layer = tf.matmul(layer, W) + b
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def general_conv(layer, is_training, architecture_conv, name="general_conv"):
@@ -74,6 +76,8 @@ def Le_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Le_Net"
     layer = general_conv(layer, is_training, architecture_conv, name=name)
     layer = dense_bn_do_relu(layer, is_training, 500, dropout, name=name+'_hidden')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def Alex_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Alex_Net"):
@@ -93,6 +97,8 @@ def Alex_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Alex_
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden1')
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden2')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def VGG11_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG11_Net"):
@@ -113,6 +119,8 @@ def VGG11_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG1
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden1')
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden2')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def VGG13_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG13_Net"):
@@ -133,6 +141,8 @@ def VGG13_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG1
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden1')
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden2')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def VGG16_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG16_Net"):
@@ -153,6 +163,8 @@ def VGG16_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG1
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden1')
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden2')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def VGG19_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG19_Net"):
@@ -173,6 +185,8 @@ def VGG19_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="VGG1
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden1')
     layer = dense_bn_do_relu(layer, is_training, 4096, dropout, name=name+'_hidden2')
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def inceptionv1_module(layer, is_training, kSize=[16,16,16,16,16,16], name="inceptionv1_module"):
@@ -229,6 +243,8 @@ def GoogLe_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Goo
     layer = tf.nn.avg_pool(layer, ksize=[1,size_pool,size_pool,1], strides=[1,1,1,1], padding='VALID')
     layer = tf.nn.dropout(layer, rate=dropout)
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def sparse_GoogLe_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="GoogLe_Net"):
@@ -267,6 +283,8 @@ def sparse_GoogLe_Net(layer, is_training, class_num, batch_size, dropout=0.0, na
     layer = tf.nn.avg_pool(layer, ksize=[1,size_pool,size_pool,1], strides=[1,1,1,1], padding='VALID')
     layer = tf.nn.dropout(layer, rate=dropout)
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def Inception_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Inceptionv3_Net"):
@@ -418,6 +436,8 @@ def Inception_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="
     layer = tf.nn.avg_pool(layer, ksize=[1,size_pool,size_pool,1], strides=[1,1,1,1], padding='VALID')
     layer = tf.nn.dropout(layer, rate=dropout)
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
 
 def conv_res(layer, is_training, architecture=[[1, 64], [3, 64], [1, 256]], alpha=0.1, name="conv_res"):
@@ -468,4 +488,6 @@ def Res_Net(layer, is_training, class_num, batch_size, dropout=0.0, name="Res_Ne
     layer = tf.nn.avg_pool(layer, ksize=[1,size_pool,size_pool,1], strides=[1,1,1,1], padding='VALID')
     layer = tf.nn.dropout(layer, rate=dropout)
     layer = dense_w_bias(layer, class_num, name=name+'_output')
+    if class_num == 1:
+        layer = tf.reshape(layer, shape=[-1])
     return layer
