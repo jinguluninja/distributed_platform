@@ -4,15 +4,25 @@ import numpy as np
 import tensorflow as tf
 import logging
 from model import DistrSystem
+from model import get_central_files
 import subprocess
 import argparse
+import paramiko
+import getpass
 
 parser = argparse.ArgumentParser()
 
+# CENTRAL PARAMETER SERVER INFO
+parser.add_argument('--central_server', type=str, default='epad-public.stanford.edu', help='central parameter server')
+parser.add_argument('--username', type=str, default='distributed', help='central parameter server username')
+parser.add_argument('--central_path', type=str, help='path to central parameter directory (/path/to/param_dir/')
+
+# LOCAL CONFIG INFO
+parser.add_argument('--params', type=str, help='path to local parameter directory (/path/to/param_dir/')
 parser.add_argument('--data', type=str, help='path to data directory (/path/to/data_dir/')
 parser.add_argument('--num_inst', type=int, help='number of participating training institutions')
 parser.add_argument('--inst_id', type=int, help='order of your institution among the num_inst institutions: int in the range [1,num_inst]\
-    Must be different for each training institution')
+	Must be different for each training institution')
 parser.add_argument('--train', default=False, action='store_true', help='include to train')
 parser.add_argument('--no-train', dest='train', action='store_false', help='include to not train')
 parser.add_argument('--val', default=False, action='store_true', help='include to validate during training')
@@ -20,14 +30,14 @@ parser.add_argument('--no-val', dest='val', action='store_false', help='include 
 parser.add_argument('--test', default=False, action='store_true', help='include to test')
 parser.add_argument('--no-test', dest='test', action='store_false', help='include to not tet')
 parser.add_argument('--model', type=str, help='Type of model to use: one of "custom", linear", "Le_Net", "Alex_Net", "VGG11_Net", \
-    "VGG13_Net", "VGG16_Net", "VGG19_Net", "GoogLe_Net", "sparse_GoogLe_Net", "Inception_Net", or "Res_Net"')
+	"VGG13_Net", "VGG16_Net", "VGG19_Net", "GoogLe_Net", "sparse_GoogLe_Net", "Inception_Net", or "Res_Net"')
 
 # THE FOLLOWING ARGUMENTS ARE REQUIRED ONLY IF inst_id = 1
 parser.add_argument('--load', type=str, default=None, help='path to saved weights to initialize model (required for testing, if training then None to train from scratch)')
 parser.add_argument('--saved_model_name', type=str, help='Will save model to save_model_name/ folder within file_repo (do not include "/" in the name')
 parser.add_argument('--log', type=str, default='log.txt', help='name of log file (must be different for each institution)')
-parser.add_argument('--git_credential_cache_timeout', type=int, default=999999999, help='number of seconds to cache github credentials\
-    It is important that this exceeds total training time')
+# parser.add_argument('--git_credential_cache_timeout', type=int, default=999999999, help='number of seconds to cache github credentials\
+#     It is important that this exceeds total training time')
 
 # FOLLOWING ARGUMENTS MUST BE THE SAME FOR ALL PARTICIPATING INSTITUTIONS DURING TRAINING
 parser.add_argument('--img_height', type=int, help='image height in pixels (must be same for each image)')
@@ -53,23 +63,34 @@ args = parser.parse_args()
 logging.basicConfig(level=logging.INFO, handlers=[logging.FileHandler(args.log), logging.StreamHandler()])
 
 
+
 def main(_):
-    subprocess.run('git pull', shell=True)
-    subprocess.run("git config credential.helper 'cache --timeout=%s'" % (args.git_credential_cache_timeout), shell=True)
+	ssh_client = paramiko.SSHClient()
+	ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+	while True:
+		try:
+			ssh_client.connect(hostname=args.central_server,username=args.username,
+				password=getpass.getpass('Password for %s@%s: ' % (args.username, args.central_server)))
+			break
+		except:
+			print('Wrong password')
+	get_central_files(ssh_client, args.central_path)
 
-    labels = {line.strip().split(',')[0]: int(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
+	labels = {line.strip().split(',')[0]: int(line.strip().split(',')[1]) for line in open(os.path.join(args.data, 'labels.csv'))}
 
-    with tf.Session() as sess:
-        classifier = DistrSystem(args, labels)
-        if args.train:
-            subprocess.run('rm train_progress.csv', shell=True)
-            files_train = os.listdir(os.path.join(args.data, 'train'))
-            files_val = os.listdir(os.path.join(args.data, 'val')) if args.val else None
-            classifier.train(sess, files_train, files_val) 
-        if args.test:
-            subprocess.run('rm test_progress.csv', shell=True)
-            files_test = os.listdir(os.path.join(args.data, 'test'))
-            classifier.test(sess, files_test, 'test') 
+	with tf.Session() as sess:
+		classifier = DistrSystem(args, labels, ssh_client)
+		if args.train:
+			subprocess.run('rm train_progress.csv', shell=True)
+			files_train = os.listdir(os.path.join(args.data, 'train'))
+			files_val = os.listdir(os.path.join(args.data, 'val')) if args.val else None
+			classifier.train(sess, files_train, files_val) 
+		if args.test:
+			subprocess.run('rm test_progress.csv', shell=True)
+			files_test = os.listdir(os.path.join(args.data, 'test'))
+			classifier.test(sess, files_test, 'test') 
+
+	ssh_client.close()
 
 if __name__ == "__main__":
-    tf.app.run()
+	tf.app.run()

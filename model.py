@@ -10,10 +10,24 @@ from nets_classification import *
 import subprocess
 import argparse
 
+def get_central_files(ssh_client, central_path):
+	ftp_client=ssh_client.open_sftp()
+	files = ftp_client.listdir(central_path)
+	for file in files:
+		ftp_client.get(os.path.join(central_path, file), os.path.join('.', file))
+	ftp_client.close()
+
+def put_file(ssh_client, central_path, file):
+	ftp_client=ssh_client.open_sftp()
+	ftp_client.put(file, os.path.join(central_path, file))
+	ftp_client.close()
+
+
 class DistrSystem(object):
-	def __init__(self, args, labels):
+	def __init__(self, args, labels, ssh_client):
 		self.args = args
 		self.labels_dict = labels
+		self.ssh_client = ssh_client
 
 		self.images = tf.placeholder(tf.float32, shape=[None, args.img_height, args.img_width, args.img_channels])
 		self.labels = tf.placeholder(tf.int32, shape=[None])
@@ -199,9 +213,7 @@ class DistrSystem(object):
 		if self.args.inst_id == 1:
 			with open('train_progress.csv', 'w') as f:
 				f.write('0' + ','*(4*self.args.num_inst + 1) + '\n')
-			subprocess.run('git add train_progress.csv', shell=True)
-			subprocess.run('git commit -m "Inst %s: initialized train_progress.csv"' % self.args.inst_id, shell=True)
-			subprocess.run('git push', shell=True)
+			put_file(self.ssh_client, self.args.central_path, 'train_progress.csv')
 			if not os.path.exists(self.args.saved_model_name):
 				os.mkdir(self.args.saved_model_name)
 			if not os.path.exists('%s.tar.gz' % self.args.saved_model_name):
@@ -210,11 +222,11 @@ class DistrSystem(object):
 
 		for cycle in range(self.args.max_cycles):
 			while (True):
-				subprocess.run('git pull', shell=True)
+				get_central_files(self.ssh_client, self.args.central_path)
 				if not os.path.exists('train_progress.csv'):
 					continue
 				progress_lines = [line.strip().split(',') for line in open('train_progress.csv')]
-				if int(progress_lines[-1][0]) != cycle:
+				if len(progress_lines) == 0 or  int(progress_lines[-1][0]) != cycle:
 					time.sleep(self.args.sleep_time)
 					continue
 				if self.args.inst_id == 1:
@@ -236,17 +248,15 @@ class DistrSystem(object):
 				train_loss, train_acc = self.optimize(session, sample)
 				self.super_print('Cycle: %s, Inst: %s, Iter: %s, train loss: %.3f, train acc: %.3f' % (cycle, self.args.inst_id, i, train_loss, train_acc))
 			self.saver.save(session, os.path.join(self.args.saved_model_name, 'model.weights'))
-			subprocess.run('git add %s' % (self.args.log), shell=True)
+			put_file(self.ssh_client, self.args.central_path, self.args.log)
 			subprocess.run('tar -zcvf %s.tar.gz %s' % (self.args.saved_model_name, self.args.saved_model_name), shell=True)
-			subprocess.run('git add %s.tar.gz' % (self.args.saved_model_name), shell=True)
+			put_file(self.ssh_client, self.args.central_path, '%s.tar.gz' % (self.args.saved_model_name))
 			progress_lines = [line.strip().split(',') for line in open('train_progress.csv')]
 			progress_lines[-1][self.args.inst_id] = '1'
 			with open('train_progress.csv', 'w') as f:
 				for line in progress_lines:
 					f.write(','.join(line) + '\n')
-			subprocess.run('git add train_progress.csv', shell=True)
-			subprocess.run('git commit -m "Inst %s: completed training cycle %s"' % (self.args.inst_id, cycle), shell=True)
-			subprocess.run('git push', shell=True)
+			put_file(self.ssh_client, self.args.central_path, 'train_progress.csv')
 			if self.args.val:
 				if (cycle + 1) % self.args.val_freq == 0:
 					self.test(session, files_val, 'val')
@@ -256,17 +266,18 @@ class DistrSystem(object):
 				with open('train_progress.csv', 'w') as f:
 					for line in progress_lines:
 						f.write(','.join(line) + '\n')
-				subprocess.run('git add train_progress.csv', shell=True)
-				subprocess.run('git commit -m "Inst %s: initialized train_progress.csv"' % self.args.inst_id, shell=True)
-				subprocess.run('git push', shell=True)	
+				put_file(self.ssh_client, self.args.central_path, 'train_progress.csv')
 
 
 	def test(self, session, files_test, dataset):
 		self.super_print('='*80)
 		if dataset == 'val':
 			while (True):
-				subprocess.run('git pull', shell=True)
+				get_central_files(self.ssh_client, self.args.central_path)
 				progress_lines = [line.strip().split(',') for line in open('train_progress.csv')]
+				if len(progress_lines) == 0:
+					time.sleep(self.args.sleep_time)
+					continue
 				if progress_lines[-1][self.args.num_inst+self.args.inst_id-1] != '' and progress_lines[-1][self.args.num_inst+self.args.inst_id] == '':
 					break
 				time.sleep(self.args.sleep_time)
@@ -276,12 +287,10 @@ class DistrSystem(object):
 				if self.args.inst_id == 1:
 					with open('test_progress.csv', 'w') as f:
 						f.write(','*(3*self.args.num_inst-1) + '\n')
-					subprocess.run('git add test_progress.csv', shell=True)
-					subprocess.run('git commit -m "Inst %s: initialized test_progress.csv"' % self.args.inst_id, shell=True)
-					subprocess.run('git push', shell=True)
+					put_file(self.ssh_client, self.args.central_path, 'test_progress.csv')
 					break
 				else:
-					subprocess.run('git pull', shell=True)						
+					get_central_files(self.ssh_client, self.args.central_path)						
 					if not os.path.exists('test_progress.csv'):
 						time.sleep(self.args.sleep_time)
 						continue
@@ -363,7 +372,7 @@ class DistrSystem(object):
 					train_progress_lines[-1][-1] = str(loss_val_overall)
 					self.super_print('NEW BEST VALIDATION LOSS, SAVING BEST MODEL')
 					subprocess.run('cp %s.tar.gz %s_best.tar.gz' % (self.args.saved_model_name, self.args.saved_model_name), shell=True)
-					subprocess.run('git add %s_best.tar.gz' % (self.args.saved_model_name), shell=True)
+					put_file(self.ssh_client, self.args.central_path, '%s_best.tar.gz' % (self.args.saved_model_name))
 				else:
 					train_progress_lines[-1][-1] = train_progress_lines[-2][-1]
 				self.super_print('='*80)
@@ -372,8 +381,8 @@ class DistrSystem(object):
 			with open('train_progress.csv', 'w') as f:
 				for line in train_progress_lines:
 					f.write(','.join(line) + '\n')
-			subprocess.run('git add train_progress.csv', shell=True)
-			subprocess.run('git add %s' % (self.args.log), shell=True)
+			put_file(self.ssh_client, self.args.central_path, 'train_progress.csv')
+			put_file(self.ssh_client, self.args.central_path, self.args.log)
 		else:
 			test_progress_lines = [line.strip().split(',') for line in open('test_progress.csv')]
 			test_progress_lines[-1][self.args.inst_id-1] = str(n_test)
@@ -393,7 +402,5 @@ class DistrSystem(object):
 			with open('test_progress.csv', 'w') as f:
 				for line in test_progress_lines:
 					f.write(','.join(line) + '\n')
-			subprocess.run('git add test_progress.csv', shell=True)
-			subprocess.run('git add %s' % (self.args.log), shell=True)
-		subprocess.run('git commit -m "Inst %s: %s"' % (self.args.inst_id, dataset), shell=True)
-		subprocess.run('git push', shell=True)
+			put_file(self.ssh_client, self.args.central_path, 'test_progress.csv')
+			put_file(self.ssh_client, self.args.central_path, self.args.log)
